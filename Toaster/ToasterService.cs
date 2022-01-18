@@ -12,7 +12,7 @@ public class ToasterService : IDisposable
 
     public ToasterService()
     {
-        AddToast(new Toast { Title = "Welcome Toast", Message = "Welcome to this Application.  I'll disappear after 15 seconds.", TTD = DateTimeOffset.Now.AddSeconds(10) });
+        AddToast(new Toast { Title = "Welcome Toast", Message = "Welcome to this Application.  I'll disappear after 15 seconds.", TimeToBurn = DateTimeOffset.Now.AddSeconds(10) });
         _timer.Interval = 5000;
         _timer.AutoReset = true;
         _timer.Elapsed += this.TimerElapsed;

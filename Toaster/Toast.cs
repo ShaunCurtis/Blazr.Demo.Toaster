@@ -11,9 +11,9 @@ public record Toast
     public string Title { get; init; } = string.Empty;
     public string Message { get; init; } = string.Empty;
     public MessageColour MessageColour { get; init; } = MessageColour.Primary;
-    public DateTimeOffset Posted = DateTimeOffset.Now;
-    public DateTimeOffset TTD { get; init; } = DateTimeOffset.Now.AddSeconds(30);
-    public bool IsBurnt => TTD < DateTimeOffset.Now;
+    public readonly DateTimeOffset Posted = DateTimeOffset.Now;
+    public DateTimeOffset TimeToBurn { get; init; } = DateTimeOffset.Now.AddSeconds(30);
+    public bool IsBurnt => TimeToBurn < DateTimeOffset.Now;
     private TimeSpan elapsedTime => Posted - DateTimeOffset.Now;
 
     public string ElapsedTimeText =>
@@ -28,6 +28,6 @@ public record Toast
             Title = title,
             Message = message,
             MessageColour = messageColour,
-            TTD = DateTimeOffset.Now.AddSeconds(secsToLive)
+            TimeToBurn = DateTimeOffset.Now.AddSeconds(secsToLive)
         };
 }
