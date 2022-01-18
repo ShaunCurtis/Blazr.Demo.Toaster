@@ -2,15 +2,15 @@
 
 This article shows how to build a simple Bootstrap Toaster in Blazor.
 
-It demonstrates several programming principles and coding patterns that are applicable in all Blazor applications.
+It demonstrates several programming principles and coding patterns that are applicable in almost all Blazor applications.
 
-1. **Separation of Concerns** - Data doesn't belong in the UI.  The Toaster UI component contains no data or data management.  It only job is to display toasts in the data service and update the display when the data service toast list changes.
+1. **Separation of Concerns** - Data doesn't belong in the UI.  The Toaster UI component contains no data or data management.  It job is to display toasts.
 
-2. **The Blazor Show/Hide Pattern** - I was reluctant to call this a pattern, but the number of times I see programmers trying to achieve this with JSInterop, I changed my mind.  This pattern implements `.Show()` and `.Hide()` type Javascript functionality used in many CSS frameworks in C# in the component.
+2. **The Blazor Show/Hide Pattern** - I was reluctant to call this a pattern, but the number of times I've see programmers trying to achieve this with JSInterop changed my mind.  This pattern implements CSS framework `.Show()` and `.Hide()` Javascript functionality in C# in the component.
 
-3. **The Blazor Notification Pattern** - decouples UI components from the data events that drive their behaviour.  We'll see this in action in the Toaster Component to Toaster Data Service realtionship.
+3. **The Blazor Notification Pattern** - decouples UI components from the underlying data that drive their behaviour using events.
 
-4. **Value Objects** - We should use value objects whereever we can.
+4. **Value Objects** - Modern design emphasises the use of value objects wherever appropriate.
 
 ## Repo and Demo Site
 
@@ -24,7 +24,7 @@ A demo site can be found here at [https://blazr-demo-database-server.azurewebsit
 
 ### Toast
 
-First an `enum` for the message colour.  We are using the Bootstrap nomenclature directly as the enum name to make building Css strings easy later.
+First an `enum` for the message colour.  It uses Bootstrap nomenclature directly to make building Css strings simple.
 
 ```csharp
 public enum MessageColour
@@ -36,7 +36,7 @@ public enum MessageColour
 
 1. Toast is declared as a `record`.
 2. There are five public properties that are used by the UI to display the toast. All are declared as immutable  with `{ get; init; }`.
-3. `TimeToBurn` uses `DateTimeOffset` to give us timezone independant absolute time. 
+3. `TimeToBurn` uses `DateTimeOffset` to give timezone independant absolute time. 
 
 ```csharp
 public record Toast
@@ -49,27 +49,37 @@ public record Toast
 ```
 Next:
 
-1. `Posted` is a created timestamp.
-2. `IsBurnt` is a bool to chack if the toast has expired.
+1. `Posted` is a object creation timestamp.
+2. `IsBurnt` is a bool to check toast expiration.
 3. `elapsedTime` is used to build `ElapsedTimeText`.
 4. `ElapsedTimeText` is used by the UI Component.
 
 ```csharp
-    public readonly DateTimeOffset Posted = DateTimeOffset.Now;
-    public bool IsBurnt => TimeToBurn < DateTimeOffset.Now;
-    private TimeSpan elapsedTime => Posted - DateTimeOffset.Now;
+public readonly DateTimeOffset Posted = DateTimeOffset.Now;
+public bool IsBurnt => TimeToBurn < DateTimeOffset.Now;
+private TimeSpan elapsedTime => Posted - DateTimeOffset.Now;
 
-    public string ElapsedTimeText =>
-        elapsedTime.Seconds > 60
-        ? $"posted {-elapsedTime.Minutes} mins ago"
-        : $"posted {-elapsedTime.Seconds} secs ago";
-
+public string ElapsedTimeText =>
+    elapsedTime.Seconds > 60
+    ? $"posted {-elapsedTime.Minutes} mins ago"
+    : $"posted {-elapsedTime.Seconds} secs ago";
 ```
-Finally a static constructor helper where we can pass in the seconds to live to build a `Toast` instance.
+Finally a static constructor helper method.
+
+```csharp
+public static Toast NewToast(string title, string message, MessageColour messageColour, int secsToLive)
+    => new Toast
+    {
+        Title = title,
+        Message = message,
+        MessageColour = messageColour,
+        TimeToBurn = DateTimeOffset.Now.AddSeconds(secsToLive)
+    };
+```
 
 ### Toaster Service
 
-The `ToasterService` is a Dependancy Injection service that holds and manages Toasts.  It has a private list to hold the toasts with add and clear methods.  There's a timer to trigger `ClearTTDs` to clear out expired toasts and if necessary raise the `ToasterChanged` event.  It also raises the `ToasterTimerElapsed` event on each cycle.
+`ToasterService` is a Dependancy Injection service that holds and manages Toasts.  It has a private list to hold the toasts with add and clear methods.  There's a timer to trigger `ClearBurntToast` to clear out expired toasts and if necessary raise the `ToasterChanged` event.  It also raises the `ToasterTimerElapsed` event on each timer cycle.
 
 1. It's a standard class.
 2. Implements `IDisposable` as it registers an event handler with the timer that needs disposing correctly.
@@ -85,8 +95,8 @@ public class ToasterService : IDisposable
 
 There are two public events that other services or UI components can subscribe to.
 
-1.  `ToasterChanged` is raised whenever the toasdt list is changed.
-2.  `ToasterTimerElapsed` is raised on each recyle of the timer.
+1.  `ToasterChanged` is raised whenever the toast list is changed.
+2.  `ToasterTimerElapsed` is raised on each timer loop.
 3.  `HasToasts` is a simple status bool.
 
 ```csharp
@@ -119,10 +129,9 @@ There are two public events that other services or UI components can subscribe t
         this.ToasterTimerElapsed?.Invoke(this, EventArgs.Empty);
     }
 ```
-The constructor adds a welcome `Toast` and sets up the timer.
+The constructor adds a welcome `Toast`, sets up the timer and registers the event handler.
 
 ```csharp
-
     public ToasterService()
     {
         AddToast(new Toast { Title = "Welcome Toast", Message = "Welcome to this Application.  I'll disappear after 15 seconds.", TTD = DateTimeOffset.Now.AddSeconds(10) });
@@ -131,7 +140,6 @@ The constructor adds a welcome `Toast` and sets up the timer.
         _timer.Elapsed += this.TimerElapsed;
         _timer.Start();
     }
-
 ```
 The *CRUD* type operations are self explanatory. Each calls `ClearBurntToast` to run the management method. 
 
@@ -162,10 +170,9 @@ The *CRUD* type operations are self explanatory. Each calls `ClearBurntToast` to
         }
     }
 ```
-Finally the `Dispose` method which clears the timer event handler. 
+Finally the `Dispose` method clears the timer event handler. 
 
 ```csharp
-
     public void Dispose()
     {
         if (_timer is not null)
@@ -177,17 +184,17 @@ Finally the `Dispose` method which clears the timer event handler.
 }
 ```
 
-`ToasterService` can run as either a `Scoped` or `Singleton` service, depending on what you're using it for.
+`ToasterService` can run as either a `Scoped` or `Singleton` service, depending on what you're want it to do.
 
 ### Toaster
 
-`Toaster` is the UI component to display toasts.
+`Toaster` is the UI component.
 
-The razor markup implements the Bootstrap Toast markup, with a loop to add each toast.  The markup will display the toasts stacked in the top right.
+The razor markup implements the Bootstrap Toast markup, with a `foreach` loop to add each toast.  The markup will display the toasts stacked in the top right.
 
 1. The component checks if there's anything to display - `this.toasterService.HasToasts`.  If not then no content is rendered -  the Blazor Show/Hide Pattern.
 2. `@_toastCss` gets the correct Css string for the message colour.
-3. The close **X** calls `this.ClearToast(toast)`.
+3. The close **X** calls `this.ClearToast(toast)` to remove a toast.
 
 ```csharp
 @implements IDisposable
@@ -218,7 +225,7 @@ The code behind class:
 
 1. Inherits from `ComponentBase` and implements `IDisposable` to unhook event handlers.
 2. Injects the `ToasterService`.
-3. Creates a second null forgiving reference to the `ToasterService`.  In the Nullable world, the C# compiler isn't clever enough to know that `ToasterService` can't be null, so we create a null forgiving reference so we don't need to null forgive ever time we use it.
+3. Creates a second null forgiving reference to the `ToasterService`.  We're in the nullable world, but the C# compiler doesn't know `ToasterService` can't be null, so we create a second null forgiving reference so we don't need to null forgive ever time we use the `ToasterService` instance.
    
 ```csharp
 public partial class Toaster : ComponentBase, IDisposable
@@ -235,7 +242,7 @@ public partial class Toaster : ComponentBase, IDisposable
         => this.InvokeAsync(this.StateHasChanged);
 ```
 
-`OnInitialized` hooks up the two `ToasterService` events to `ToastChanged`, and `Dispose` unhooks them.
+`OnInitialized` registers the two `ToasterService` events to `ToastChanged`, and `Dispose` removes them.
 
 ```csharp
     protected override void OnInitialized()
@@ -284,7 +291,7 @@ Finally `ClearToast` clears the selected toast from the service and `toastCss` g
 <Toaster />
 ```
 
-3. Inject the service into any pages you want to raise toasts, and call `AddToast`.  The example below shows a demo `Index` page.
+3. Inject the service into any pages where you want to raise toasts, and call `AddToast`.  The example below shows a demo `Index` page.
 
 ```csharp
 @page "/"
@@ -312,10 +319,10 @@ Welcome to your new app.
 
 ## Wrap Up
 
-The design demonstrates a clean spearation of data from the UI. All data handling happens in `ToasterService`.  `Toaster` uses references to the objects in `ToasterService`.  
+The design demonstrates a clean separation of data from UI.  All data handling happens in `ToasterService`.  `Toaster` uses references to the data objects in `ToasterService`.  
 
 The Blazor notification pattern is used to update the UI whenever the toast list changes.  `Toaster` registers an event handler with the two `ToasterService` events which re-renders the component whenever an event occurs.
 
 `Toaster` demonstrates how to show and hide UI markup based on state.
 
-`Toast` is a value object.  It simplifies equality checking and ensures that data can't be modified once created.
+`Toast` is a value object.  It simplifies equality checking (we don't do any here) and ensures toasts can't be modified once created.
