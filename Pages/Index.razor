@@ -1,0 +1,20 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?" />
+<div class="m-2 p-2">
+    <button class="btn btn-primary" @onclick="AddToast" >Add a Toast</button>
+</div>
+
+@code {
+    [Inject] private ToasterService? _toasterService {get; set;}
+    private ToasterService toasterService => _toasterService!;
+
+    private void AddToast()
+    => toasterService.AddToast(Toast.NewToast("Hello World", "Hello from Blazor", MessageColour.Info, 30));
+}

@@ -1,0 +1,24 @@
+@namespace Blazr.Demo.Toaster
+
+@implements IDisposable
+@if (this.toasterService.HasToasts)
+{
+    <div class="">
+        <div class="toast-container position-absolute top-0 end-0 mt-5 pt-5 pe-2">
+            @foreach (var toast in this.toasterService.GetToasts())
+            {
+                var _toastCss = toastCss(toast);
+                <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header @_toastCss">
+                        <strong class="me-auto">@toast.Title</strong>
+                        <small class="@_toastCss">@toast.ElapsedTimeText</small>
+                        <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="() => this.ClearToast(toast)"></button>
+                    </div>
+                    <div class="toast-body">
+                        @toast.Message
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
