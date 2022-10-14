@@ -66,7 +66,7 @@ public class ToasterService : IDisposable
     {
         if (_timer is not null)
         {
-            _timer.Elapsed += this.TimerElapsed;
+            _timer.Elapsed -= this.TimerElapsed;
             _timer.Stop();
         }
     }
